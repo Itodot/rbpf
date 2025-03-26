@@ -382,6 +382,7 @@ impl<'a> EbpfVmMbuff<'a> {
     /// let res = vm.execute_program(mem, &mut mbuff).unwrap();
     /// assert_eq!(res, 0x2211);
     /// ```
+    /// 执行位置
     pub fn execute_program(&self, mem: &[u8], mbuff: &[u8]) -> Result<u64, Error> {
         interpreter::execute_program(self.prog, mem, mbuff, &self.helpers, &self.allowed_memory)
     }
@@ -1781,6 +1782,7 @@ impl<'a> EbpfVmNoData<'a> {
     ///
     /// // For this kind of VM, the `execute_program()` function needs no argument.
     /// let res = vm.execute_program().unwrap();
+    ///
     /// assert_eq!(res, 0x1122);
     /// ```
     pub fn execute_program(&self) -> Result<u64, Error> {
