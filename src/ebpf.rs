@@ -16,34 +16,46 @@
 
 use crate::lib::*;
 use byteorder::{ByteOrder, LittleEndian};
-
+//最大指令数 10000000
 /// Maximum number of instructions in an eBPF program.
 pub const PROG_MAX_INSNS: usize = 1000000;
+//ebf指令大小
 /// Size of an eBPF instructions, in bytes.
 pub const INSN_SIZE: usize = 8;
+//程序最多指令大小 1000000*8 bytes
 /// Maximum size of an eBPF program, in bytes.
 pub const PROG_MAX_SIZE: usize = PROG_MAX_INSNS * INSN_SIZE;
+//  ebf堆栈大小
 /// Stack for the eBPF stack, in bytes.
 pub const STACK_SIZE: usize = 512;
 
 // eBPF op codes.
 // See also https://www.kernel.org/doc/Documentation/networking/filter.txt
-
+//
 // Three least significant bits are operation class:
+// 立即加载
 /// BPF operation class: load from immediate.
 pub const BPF_LD: u8 = 0x00;
+// 从寄存器加载
 /// BPF operation class: load from register.
 pub const BPF_LDX: u8 = 0x01;
+// 立即存储
 /// BPF operation class: store immediate.
 pub const BPF_ST: u8 = 0x02;
+// 存储寄存器中的值
 /// BPF operation class: store value from register.
 pub const BPF_STX: u8 = 0x03;
+// 32位算术运算
 /// BPF operation class: 32 bits arithmetic operation.
 pub const BPF_ALU: u8 = 0x04;
+// 跳转,用于比较64位宽操作数
 /// BPF operation class: jump (64-bit wide operands for comparisons).
 pub const BPF_JMP: u8 = 0x05;
+// 跳转,用于比较32位宽操作数
 /// BPF operation class: jump (32-bit wide operands for comparisons).
 pub const BPF_JMP32: u8 = 0x06;
+
+// 64为算术操作符
 // [ class 6 unused, reserved for future use ]
 /// BPF operation class: 64 bits arithmetic operation.
 pub const BPF_ALU64: u8 = 0x07;
@@ -57,26 +69,35 @@ pub const BPF_ALU64: u8 = 0x07;
 
 // Size modifiers:
 /// BPF size modifier: word (4 bytes).
+/// BPF大小修饰符 4 bytes
 pub const BPF_W: u8 = 0x00;
 /// BPF size modifier: half-word (2 bytes).
+/// BPF大小修饰符 2 bytes
 pub const BPF_H: u8 = 0x08;
+//  BPF大小修饰符 1 bytes
 /// BPF size modifier: byte (1 byte).
 pub const BPF_B: u8 = 0x10;
+//  BPF大小修饰符 8 bytes
 /// BPF size modifier: double word (8 bytes).
 pub const BPF_DW: u8 = 0x18;
 
 // Mode modifiers:
+//  BPF模式修改器:立即数
 /// BPF mode modifier: immediate value.
 pub const BPF_IMM: u8 = 0x00;
+//  BPF模式修改器:绝对地址模式
 /// BPF mode modifier: absolute load.
 pub const BPF_ABS: u8 = 0x20;
+//  BPF模式修改器:间接加载
 /// BPF mode modifier: indirect load.
 pub const BPF_IND: u8 = 0x40;
+//  BPF模式修改器:存储到内存
 /// BPF mode modifier: load from / store to memory.
 pub const BPF_MEM: u8 = 0x60;
 // [ 0x80 reserved ]
 // [ 0xa0 reserved ]
 /// BPF mode modifier: exclusive add.
+//  BPF模式修改器:独占添加
 pub const BPF_XADD: u8 = 0xc0;
 
 // For arithmetic (BPF_ALU/BPF_ALU64) and jump (BPF_JMP) instructions:
@@ -88,68 +109,98 @@ pub const BPF_XADD: u8 = 0xc0;
 
 // Source modifiers:
 /// BPF source operand modifier: 32-bit immediate value.
+/// BPF源操作数修饰符:32位立即值
 pub const BPF_K: u8 = 0x00;
 /// BPF source operand modifier: `src` register.
+/// BPF源操作数修饰符:src寄存器
 pub const BPF_X: u8 = 0x08;
 
 // Operation codes -- BPF_ALU or BPF_ALU64 classes:
 /// BPF ALU/ALU64 operation code: addition.
+/// BPF ALU/ALU64操作码:加法
 pub const BPF_ADD: u8 = 0x00;
+//  BPF ALU/ALU64操作码:减法
 /// BPF ALU/ALU64 operation code: subtraction.
 pub const BPF_SUB: u8 = 0x10;
+//  BPF ALU/ALU64操作码:乘法
 /// BPF ALU/ALU64 operation code: multiplication.
 pub const BPF_MUL: u8 = 0x20;
+// BPF ALU/ALU64操作码:除法
 /// BPF ALU/ALU64 operation code: division.
 pub const BPF_DIV: u8 = 0x30;
+// BPF ALU/ALU64操作码:或
 /// BPF ALU/ALU64 operation code: or.
 pub const BPF_OR: u8 = 0x40;
+// BPF ALU/ALU64操作码:与
 /// BPF ALU/ALU64 operation code: and.
 pub const BPF_AND: u8 = 0x50;
+// BPF ALU/ALU64操作码:左移
 /// BPF ALU/ALU64 operation code: left shift.
 pub const BPF_LSH: u8 = 0x60;
+// BPF ALU/ALU64操作码:右移
 /// BPF ALU/ALU64 operation code: right shift.
 pub const BPF_RSH: u8 = 0x70;
+// BPF ALU/ALU64操作码:否定
 /// BPF ALU/ALU64 operation code: negation.
 pub const BPF_NEG: u8 = 0x80;
+// BPF ALU/ALU64操作码:模
 /// BPF ALU/ALU64 operation code: modulus.
 pub const BPF_MOD: u8 = 0x90;
+// BPF ALU/ALU64操作码:异或
 /// BPF ALU/ALU64 operation code: exclusive or.
 pub const BPF_XOR: u8 = 0xa0;
+// BPF ALU/ALU64操作码:移动
 /// BPF ALU/ALU64 operation code: move.
 pub const BPF_MOV: u8 = 0xb0;
+// BPF ALU/ALU64操作码:算术右移
 /// BPF ALU/ALU64 operation code: sign extending right shift.
 pub const BPF_ARSH: u8 = 0xc0;
+// BPF ALU/ALU64操作码:结束转换
 /// BPF ALU/ALU64 operation code: endianness conversion.
 pub const BPF_END: u8 = 0xd0;
 
 // Operation codes -- BPF_JMP or BPF_JMP32 classes:
 /// BPF JMP operation code: jump.
+/// BPF JMP操作码:跳转
 pub const BPF_JA: u8 = 0x00;
 /// BPF JMP operation code: jump if equal.
+/// BPF JMP操作码:如果相等则跳转
 pub const BPF_JEQ: u8 = 0x10;
 /// BPF JMP operation code: jump if greater than.
+/// BPF JMP操作码:如果大于则跳转
 pub const BPF_JGT: u8 = 0x20;
 /// BPF JMP operation code: jump if greater or equal.
+/// BPF JMP操作码:如果大于或等于则跳转
 pub const BPF_JGE: u8 = 0x30;
 /// BPF JMP operation code: jump if `src` & `reg`.
+/// BPF JMP操作码:如果src和reg则跳转
 pub const BPF_JSET: u8 = 0x40;
 /// BPF JMP operation code: jump if not equal.
+/// BPF JMP操作码:如果不相等则跳转
 pub const BPF_JNE: u8 = 0x50;
 /// BPF JMP operation code: jump if greater than (signed).
+/// BPF JMP操作码:如果大于(有符号)则跳转
 pub const BPF_JSGT: u8 = 0x60;
 /// BPF JMP operation code: jump if greater or equal (signed).
+/// BPF JMP操作码:如果大于或等于(有符号)则跳转
 pub const BPF_JSGE: u8 = 0x70;
 /// BPF JMP operation code: helper function call.
+/// BPF JMP操作码:帮助函数调用
 pub const BPF_CALL: u8 = 0x80;
 /// BPF JMP operation code: return from program.
+/// BPF JMP操作码:从程序返回
 pub const BPF_EXIT: u8 = 0x90;
 /// BPF JMP operation code: jump if lower than.
+/// BPF JMP操作码:如果小于则跳转
 pub const BPF_JLT: u8 = 0xa0;
 /// BPF JMP operation code: jump if lower or equal.
+/// BPF JMP操作码:如果小于或等于则跳转
 pub const BPF_JLE: u8 = 0xb0;
 /// BPF JMP operation code: jump if lower than (signed).
+/// BPF JMP操作码:如果小于(有符号)则跳转
 pub const BPF_JSLT: u8 = 0xc0;
 /// BPF JMP operation code: jump if lower or equal (signed).
+/// BPF JMP操作码:如果小于或等于(有符号)则跳转
 pub const BPF_JSLE: u8 = 0xd0;
 
 // Op codes
@@ -157,52 +208,77 @@ pub const BPF_JSLE: u8 = 0xd0;
 // combines above flags and does not attribute a name per operation.)
 
 /// BPF opcode: `ldabsb src, dst, imm`.
+/// BPF操作码: `ldabsb src, dst, imm`
+/// 立即数/内存加载 绝对地址模式 加载1个字节
 pub const LD_ABS_B: u8 = BPF_LD | BPF_ABS | BPF_B;
 /// BPF opcode: `ldabsh src, dst, imm`.
+/// BPF操作码: `ldabsh src, dst, imm`
+/// 立即数/内存加载 绝对地址模式 加载2个字节
 pub const LD_ABS_H: u8 = BPF_LD | BPF_ABS | BPF_H;
 /// BPF opcode: `ldabsw src, dst, imm`.
+/// BPF操作码: `ldabsw src, dst, imm`
 pub const LD_ABS_W: u8 = BPF_LD | BPF_ABS | BPF_W;
 /// BPF opcode: `ldabsdw src, dst, imm`.
+/// BPF操作码: `ldabsdw src, dst, imm`
 pub const LD_ABS_DW: u8 = BPF_LD | BPF_ABS | BPF_DW;
 /// BPF opcode: `ldindb src, dst, imm`.
+/// BPF操作码: `ldindb src, dst, imm`
 pub const LD_IND_B: u8 = BPF_LD | BPF_IND | BPF_B;
 /// BPF opcode: `ldindh src, dst, imm`.
+/// BPF操作码: `ldindh src, dst, imm`
 pub const LD_IND_H: u8 = BPF_LD | BPF_IND | BPF_H;
 /// BPF opcode: `ldindw src, dst, imm`.
+/// BPF操作码: `ldindw src, dst, imm`
 pub const LD_IND_W: u8 = BPF_LD | BPF_IND | BPF_W;
 /// BPF opcode: `ldinddw src, dst, imm`.
+/// BPF操作码: `ldinddw src, dst, imm`
 pub const LD_IND_DW: u8 = BPF_LD | BPF_IND | BPF_DW;
 
 /// BPF opcode: `lddw dst, imm` /// `dst = imm`.
+/// BPF操作码: `lddw dst, imm` /// `dst = imm`.
 pub const LD_DW_IMM: u8 = BPF_LD | BPF_IMM | BPF_DW;
 /// BPF opcode: `ldxb dst, [src + off]` /// `dst = (src + off) as u8`.
+/// BPF操作码: `ldxb dst, [src + off]` /// `dst = (src + off) as u8`.
 pub const LD_B_REG: u8 = BPF_LDX | BPF_MEM | BPF_B;
 /// BPF opcode: `ldxh dst, [src + off]` /// `dst = (src + off) as u16`.
+/// BPF操作码: `ldxh dst, [src + off]` /// `dst = (src + off) as u16`.
 pub const LD_H_REG: u8 = BPF_LDX | BPF_MEM | BPF_H;
 /// BPF opcode: `ldxw dst, [src + off]` /// `dst = (src + off) as u32`.
+/// BPF操作码: `ldxw dst, [src + off]` /// `dst = (src + off) as u32`.
 pub const LD_W_REG: u8 = BPF_LDX | BPF_MEM | BPF_W;
 /// BPF opcode: `ldxdw dst, [src + off]` /// `dst = (src + off) as u64`.
+/// BPF操作码: `ldxdw dst, [src + off]` /// `dst = (src + off) as u64`.
 pub const LD_DW_REG: u8 = BPF_LDX | BPF_MEM | BPF_DW;
 /// BPF opcode: `stb [dst + off], imm` /// `(dst + offset) as u8 = imm`.
+/// BPF操作码: `stb [dst + off], imm` /// `(dst + offset) as u8 = imm`.
 pub const ST_B_IMM: u8 = BPF_ST | BPF_MEM | BPF_B;
 /// BPF opcode: `sth [dst + off], imm` /// `(dst + offset) as u16 = imm`.
+/// BPF操作码: `sth [dst + off], imm` /// `(dst + offset) as u16 = imm`.
 pub const ST_H_IMM: u8 = BPF_ST | BPF_MEM | BPF_H;
 /// BPF opcode: `stw [dst + off], imm` /// `(dst + offset) as u32 = imm`.
+/// BPF操作码: `stw [dst + off], imm` /// `(dst + offset) as u32 = imm`.
 pub const ST_W_IMM: u8 = BPF_ST | BPF_MEM | BPF_W;
 /// BPF opcode: `stdw [dst + off], imm` /// `(dst + offset) as u64 = imm`.
+/// BPF操作码: `stdw [dst + off], imm` /// `(dst + offset) as u64 = imm`.
 pub const ST_DW_IMM: u8 = BPF_ST | BPF_MEM | BPF_DW;
 /// BPF opcode: `stxb [dst + off], src` /// `(dst + offset) as u8 = src`.
+/// BPF操作码: `stxb [dst + off], src` /// `(dst + offset) as u8 = src`.
 pub const ST_B_REG: u8 = BPF_STX | BPF_MEM | BPF_B;
 /// BPF opcode: `stxh [dst + off], src` /// `(dst + offset) as u16 = src`.
+/// BPF操作码: `stxh [dst + off], src` /// `(dst + offset) as u16 = src`.
 pub const ST_H_REG: u8 = BPF_STX | BPF_MEM | BPF_H;
 /// BPF opcode: `stxw [dst + off], src` /// `(dst + offset) as u32 = src`.
+/// BPF操作码: `stxw [dst + off], src` /// `(dst + offset) as u32 = src`.
 pub const ST_W_REG: u8 = BPF_STX | BPF_MEM | BPF_W;
 /// BPF opcode: `stxdw [dst + off], src` /// `(dst + offset) as u64 = src`.
+/// BPF操作码: `stxdw [dst + off], src` /// `(dst + offset) as u64 = src`.
 pub const ST_DW_REG: u8 = BPF_STX | BPF_MEM | BPF_DW;
 
 /// BPF opcode: `stxxaddw [dst + off], src`.
+/// BPF操作码: `stxxaddw [dst + off], src`.
 pub const ST_W_XADD: u8 = BPF_STX | BPF_XADD | BPF_W;
 /// BPF opcode: `stxxadddw [dst + off], src`.
+/// BPF操作码: `stxxadddw [dst + off], src`.
 pub const ST_DW_XADD: u8 = BPF_STX | BPF_XADD | BPF_DW;
 
 /// BPF opcode: `add32 dst, imm` /// `dst += imm`.
@@ -467,7 +543,9 @@ impl Insn {
     /// };
     /// assert_eq!(insn.to_array(), prog);
     /// ```
+
     pub fn to_array(&self) -> [u8; INSN_SIZE] {
+        // Byte 0   | Byte 1   | Bytes 2-3 | Bytes 4-7
         [
             self.opc,
             self.src.wrapping_shl(4) | self.dst,
@@ -500,6 +578,7 @@ impl Insn {
     /// assert_eq!(insn.to_vec(), prog);
     /// ```
     pub fn to_vec(&self) -> Vec<u8> {
+        // Byte 0   | Byte 1   | Bytes 2-3 | Bytes 4-7
         vec![
             self.opc,
             self.src.wrapping_shl(4) | self.dst,
@@ -616,7 +695,9 @@ pub fn get_insn(prog: &[u8], idx: usize) -> Insn {
 ///     },
 /// ]);
 /// ```
+/// 将指令转换为Vec<Insn>列表
 pub fn to_insn_vec(prog: &[u8]) -> Vec<Insn> {
+    // 检查程序长度是否是指令长度的整数倍
     if prog.len() % INSN_SIZE != 0 {
         panic!(
             "Error: eBPF program length must be a multiple of {:?} octets",
@@ -626,8 +707,9 @@ pub fn to_insn_vec(prog: &[u8]) -> Vec<Insn> {
 
     let mut res = vec![];
     let mut insn_ptr: usize = 0;
-
+    // 指令长度为8字节
     while insn_ptr * INSN_SIZE < prog.len() {
+        // 获取指令
         let insn = get_insn(prog, insn_ptr);
         res.push(insn);
         insn_ptr += 1;

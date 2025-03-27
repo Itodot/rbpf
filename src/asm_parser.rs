@@ -17,6 +17,7 @@ use combine::{
 use crate::lib::*;
 
 /// Operand of an instruction.
+/// 指令的执行者
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Operand {
     /// Register number.
@@ -30,6 +31,7 @@ pub enum Operand {
 }
 
 /// Parsed instruction.
+/// 解析指令
 #[derive(Debug, PartialEq, Eq)]
 pub struct Instruction {
     /// Instruction name.
@@ -89,7 +91,9 @@ where
     I: Stream<Token = char>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
+    //解析以特定分隔符分隔的多个元素。
     let operands = sep_by(operand(), char(',').skip(spaces()));
+
     (ident().skip(spaces()), operands, spaces()).map(|t| Instruction {
         name: t.0,
         operands: t.1,
@@ -100,10 +104,13 @@ where
 ///
 /// The instructions are not validated and may have invalid names and operand types.
 pub fn parse(input: &str) -> Result<Vec<Instruction>, String> {
+    //1.跳过零个或多个空格
+    //2.这里的with 不关心((), ["mov", "add", "sub"]) 里的()
     let mut with = spaces().with(many(instruction()).skip(eof()));
 
     #[cfg(feature = "std")]
     {
+        //根据with解析器去解析指令
         match with.easy_parse(position::Stream::new(input)) {
             Ok((insts, _)) => Ok(insts),
             Err(err) => Err(err.to_string()),
@@ -116,7 +123,6 @@ pub fn parse(input: &str) -> Result<Vec<Instruction>, String> {
             Err(err) => Err(err.to_string()),
         }
     }
-
 }
 
 #[cfg(test)]
@@ -586,21 +592,19 @@ exit
     #[test]
     fn test_error_eof() {
         let expected_error;
-        #[cfg(feature = "std")] {
+        #[cfg(feature = "std")]
+        {
             expected_error = Err(
-                "Parse error at line: 1, column: 6\nUnexpected end of input\nExpected digit\n".to_string()
+                "Parse error at line: 1, column: 6\nUnexpected end of input\nExpected digit\n"
+                    .to_string(),
             );
         }
-        #[cfg(not(feature = "std"))] {
-            expected_error = Err(
-                "unexpected parse".to_string()
-            );
+        #[cfg(not(feature = "std"))]
+        {
+            expected_error = Err("unexpected parse".to_string());
         }
         // Unexpected end of input in a register name.
-        assert_eq!(
-            parse("lsh r"),
-            expected_error
-        );
+        assert_eq!(parse("lsh r"), expected_error);
     }
 
     /// When running without `std` the `EasyParser` provided by `combine`
@@ -609,21 +613,18 @@ exit
     #[test]
     fn test_error_unexpected_character() {
         let expected_error;
-        #[cfg(feature = "std")] {
+        #[cfg(feature = "std")]
+        {
             expected_error = Err(
                 "Parse error at line: 2, column: 1\nUnexpected `^`\nExpected letter or digit, whitespaces, `r`, `-`, `+`, `[` or end of input\n".to_string()
             );
         }
-        #[cfg(not(feature = "std"))] {
-            expected_error = Err(
-                "unexpected parse".to_string()
-            );
+        #[cfg(not(feature = "std"))]
+        {
+            expected_error = Err("unexpected parse".to_string());
         }
         // Unexpected character at end of input.
-        assert_eq!(
-            parse("exit\n^"),
-            expected_error
-        );
+        assert_eq!(parse("exit\n^"), expected_error);
     }
 
     #[test]
