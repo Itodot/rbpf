@@ -94,6 +94,7 @@ pub const BPF_TRACE_PRINTK_IDX: u32 = 6;
 ///
 /// This would equally print the three numbers in `/sys/kernel/debug/tracing` file each time the
 /// program is run.
+///
 #[allow(dead_code)]
 #[allow(unused_variables)]
 #[cfg(feature = "std")]
@@ -123,12 +124,18 @@ pub fn bpf_trace_printf(unused1: u64, unused2: u64, arg3: u64, arg4: u64, arg5: 
 /// let gathered = helpers::gather_bytes(0x11, 0x22, 0x33, 0x44, 0x55);
 /// assert_eq!(gathered, 0x1122334455);
 /// ```
+/// @param arg1 第一个参数，将被左移 32 位
+/// @param arg2 第二个参数，将被左移 24 位
+/// @param arg3 第三个参数，将被左移 16 位
+/// @param arg4 第四个参数，将被左移 8 位
+/// @param arg5 第五个参数，不进行位移
+/// @return 合并后的 u64 类型的值
 pub fn gather_bytes(arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64) -> u64 {
-    arg1.wrapping_shl(32)
-        | arg2.wrapping_shl(24)
-        | arg3.wrapping_shl(16)
-        | arg4.wrapping_shl(8)
-        | arg5
+    arg1.wrapping_shl(32) // 将 arg1 左移 32 位，使用 wrapping_shl 防止溢出
+        | arg2.wrapping_shl(24) // 将 arg2 左移 24 位，并与之前的结果进行按位或操作
+        | arg3.wrapping_shl(16) // 将 arg3 左移 16 位，并与之前的结果进行按位或操作
+        | arg4.wrapping_shl(8)  // 将 arg4 左移 8 位，并与之前的结果进行按位或操作
+        | arg5 // 最后与 arg5 进行按位或操作，完成合并
 }
 
 /// Same as `void *memfrob(void *s, size_t n);` in `string.h` in C. See the GNU manual page (in
@@ -142,12 +149,26 @@ pub fn gather_bytes(arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64) -> u6
 ///
 /// let val: u64 = 0x112233;
 /// let val_ptr = &val as *const u64;
-///
+/// println!("{:?}",val_ptr);
 /// helpers::memfrob(val_ptr as u64, 8, 0, 0, 0);
 /// assert_eq!(val, 0x2a2a2a2a2a3b0819);
 /// helpers::memfrob(val_ptr as u64, 8, 0, 0, 0);
 /// assert_eq!(val, 0x112233);
 /// ```
+///-----------------------------------------------------------------------
+//00000000 00000000 00000000 00000000 00000000  0b010001 0b100010 0b110011
+//0b010001
+//0b101010
+//0b111011 32+16+8+2+1=59  0x3b
+
+//0b100010
+//0b101010
+//0b001000              8  0x08
+
+//0b110011
+//0b101010
+//0b011001      16+8+1=25  0x19
+//-------------------------------------------------------------------------
 #[allow(unused_variables)]
 pub fn memfrob(ptr: u64, len: u64, unused3: u64, unused4: u64, unused5: u64) -> u64 {
     for i in 0..len {
@@ -191,6 +212,7 @@ pub fn memfrob(ptr: u64, len: u64, unused3: u64, unused4: u64, unused5: u64) -> 
 /// let x = helpers::sqrti(9, 0, 0, 0, 0);
 /// assert_eq!(x, 3);
 /// ```
+// 开方
 #[allow(dead_code)]
 #[allow(unused_variables)]
 #[cfg(feature = "std")] // sqrt is only available when using `std`
@@ -214,6 +236,9 @@ pub fn sqrti(arg1: u64, unused2: u64, unused3: u64, unused4: u64, unused5: u64) 
 #[allow(dead_code)]
 #[allow(unused_variables)]
 pub fn strcmp(arg1: u64, arg2: u64, arg3: u64, unused4: u64, unused5: u64) -> u64 {
+    //判断两个字符串是否相等
+    //当结果为0时相等
+    //当结果不为0时不相等
     // C-like strcmp, maybe shorter than converting the bytes to string and comparing?
     if arg1 == 0 || arg2 == 0 {
         return u64::MAX;
@@ -241,6 +266,7 @@ pub fn strcmp(arg1: u64, arg2: u64, arg3: u64, unused4: u64, unused5: u64) -> u6
 
 /// Returns a random u64 value comprised between `min` and `max` values (inclusive). Arguments 3 to
 /// 5 are unused.
+///
 #[allow(dead_code)]
 #[allow(unused_variables)]
 #[cfg(feature = "std")]
@@ -251,15 +277,19 @@ pub fn rand(min: u64, max: u64, unused3: u64, unused4: u64, unused5: u64) -> u64
     use std::thread;
     use std::time::Instant;
 
+    //使用开源的wyRand seed种子
     // Constants for WyRand taken from: https://github.com/wangyi-fudan/wyhash/blob/master/wyhash.h#L151
     const WY_CONST_0: u64 = 0x2d35_8dcc_aa6c_78a5;
     const WY_CONST_1: u64 = 0x8bb8_4b93_962e_acc9;
 
+    //使用当前时间和线程ID生成伪随机数
     std::thread_local! {
         static RNG: Cell<u64> = {
             // Seed the RNG with the thread ID and the current time.
             let mut hasher = DefaultHasher::new();
+            //当前时间
             Instant::now().hash(&mut hasher);
+            //当前所在线程
             thread::current().id().hash(&mut hasher);
             Cell::new(hasher.finish())
         };

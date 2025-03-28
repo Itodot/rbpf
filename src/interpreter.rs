@@ -19,21 +19,27 @@ fn check_mem(
     stack: &[u8],
     allowed_memory: &HashSet<u64>,
 ) -> Result<(), Error> {
+    // 检查地址是否在允许的内存范围内
     if let Some(addr_end) = addr.checked_add(len as u64) {
+        // 检查地址是否在元数据缓冲区范围内
         if mbuff.as_ptr() as u64 <= addr && addr_end <= mbuff.as_ptr() as u64 + mbuff.len() as u64 {
             return Ok(());
         }
+        // 检查地址是否在内存范围内
         if mem.as_ptr() as u64 <= addr && addr_end <= mem.as_ptr() as u64 + mem.len() as u64 {
             return Ok(());
         }
+        // 检查地址是否在堆栈范围内
         if stack.as_ptr() as u64 <= addr && addr_end <= stack.as_ptr() as u64 + stack.len() as u64 {
             return Ok(());
         }
+        // 检查地址是否在允许的内存集合中
         if allowed_memory.contains(&addr) {
             return Ok(());
         }
     }
 
+    // 如果地址超出范围，返回错误信息
     Err(Error::new(ErrorKind::Other, format!(
         "Error: out of bounds memory {} (insn #{:?}), addr {:#x}, size {:?}\nmbuff: {:#x}/{:#x}, mem: {:#x}/{:#x}, stack: {:#x}/{:#x}",
         access_type, insn_ptr, addr, len,
@@ -54,7 +60,7 @@ pub fn execute_program(
     const U32MAX: u64 = u32::MAX as u64;
     // 0x3f 设置64位的屏蔽值
     const SHIFT_MASK_64: u64 = 0x3f;
-
+    //匹配8位的程序
     let prog = match prog_ {
         Some(prog) => prog,
         None => Err(Error::new(
@@ -62,8 +68,10 @@ pub fn execute_program(
             "Error: No program set, call prog_set() to load one",
         ))?,
     };
+    //堆栈大小
     let stack = vec![0u8; ebpf::STACK_SIZE];
 
+    //R1指向存储区的开始，R10指向堆栈
     // R1 points to beginning of memory area, R10 to stack
     let mut reg: [u64; 11] = [
         0,
@@ -78,12 +86,13 @@ pub fn execute_program(
         0,
         stack.as_ptr() as u64 + stack.len() as u64,
     ];
+    //mbuff
     if !mbuff.is_empty() {
         reg[1] = mbuff.as_ptr() as u64;
     } else if !mem.is_empty() {
         reg[1] = mem.as_ptr() as u64;
     }
-
+    //检查地址是否在允许的内存地址范围内,load和store为了在报错时进行区分
     let check_mem_load = |addr: u64, len: usize, insn_ptr: usize| {
         check_mem(
             addr,
@@ -128,6 +137,7 @@ pub fn execute_program(
         }
 
         match insn.opc {
+            // 从内存到寄存器的操作
             // BPF_LD class
             // LD_ABS_* and LD_IND_* are supposed to load pointer to data from metadata buffer.
             // Since this pointer is constant, and since we already know it (mem), do not
@@ -231,7 +241,8 @@ pub fn execute_program(
                     x.read_unaligned()
                 }
             }
-
+            //--------------------------------------------------------------------
+            //从寄存器到内存的操作
             // BPF_ST class
             ebpf::ST_B_IMM => unsafe {
                 let x = (reg[_dst] as *const u8).wrapping_offset(insn.off as isize) as *mut u8;
@@ -277,7 +288,8 @@ pub fn execute_program(
             },
             ebpf::ST_W_XADD => unimplemented!(),
             ebpf::ST_DW_XADD => unimplemented!(),
-
+            //--------------------------------------------------------------------------
+            // 算术操作
             // BPF_ALU class
             // TODO Check how overflow works in kernel. Should we &= U32MAX all src register value
             // before we do the operation?
@@ -375,7 +387,8 @@ pub fn execute_program(
             ebpf::ARSH64_REG => {
                 reg[_dst] = (reg[_dst] as i64 >> (reg[_src] as u64 & SHIFT_MASK_64)) as u64
             }
-
+            //--------------------------------------------------------------------------
+            //跳转操作
             // BPF_JMP class
             // TODO: check this actually works as expected for signed / unsigned ops
             // J-EQ, J-NE, J-GT, J-GE, J-LT, J-LE: unsigned

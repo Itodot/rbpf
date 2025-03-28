@@ -221,6 +221,8 @@ impl<'a> EbpfVmMbuff<'a> {
     /// let mut vm = rbpf::EbpfVmMbuff::new(Some(prog1)).unwrap();
     /// vm.set_program(prog2).unwrap();
     /// ```
+
+    //加载新的程序
     pub fn set_program(&mut self, prog: &'a [u8]) -> Result<(), Error> {
         (self.verifier)(prog)?;
         self.prog = Some(prog);
