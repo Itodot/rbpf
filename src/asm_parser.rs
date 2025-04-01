@@ -99,7 +99,6 @@ where
         operands: t.1,
     })
 }
-
 /// Parse a string into a list of instructions.
 ///
 /// The instructions are not validated and may have invalid names and operand types.
@@ -133,7 +132,17 @@ mod tests {
     use combine::Parser;
 
     // Unit tests for the different kinds of parsers.
-
+    // parse机器指令转换为 instruction
+    #[test]
+    fn test_parse() {
+        let ins = parse(
+            "
+        mov r0, 0x0
+        add r1, 2
+        ",
+        );
+        eprintln!("{:?}", ins);
+    }
     #[test]
     fn test_ident() {
         assert_eq!(ident().parse("nop"), Ok(("nop".to_string(), "")));

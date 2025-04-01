@@ -109,6 +109,7 @@ fn make_instruction_map() -> HashMap<String, (InstructionType, u8)> {
 
         // 二元算术和逻辑操作指令。
         for &(name, opc) in &alu_binary_ops {
+            //这里
             entry(name, AluBinary, ebpf::BPF_ALU64 | opc); // 64位操作
             entry(&format!("{name}32"), AluBinary, ebpf::BPF_ALU | opc); // 32位操作
             entry(&format!("{name}64"), AluBinary, ebpf::BPF_ALU64 | opc); // 显式64位操作
@@ -343,11 +344,33 @@ fn assemble_internal(parsed: &[Instruction]) -> Result<Vec<Insn>, String> {
 /// 来处理可能的错误。
 pub fn assemble(src: &str) -> Result<Vec<u8>, String> {
     let parsed = (parse(src))?;
-
+    //Ok([Instruction { name: "mov", operands: [Register(0), Integer(0)] }, Instruction { name: "add", operands: [Register(1), Integer(2)] }])
     let insns = (assemble_internal(&parsed))?;
+
     let mut result: Vec<u8> = vec![];
     for insn in insns {
         result.extend_from_slice(&insn.to_array());
     }
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::asm_parser::parse;
+    use crate::assembler::assemble_internal;
+    #[test]
+    fn test_assemble_internal() {
+        let src = "
+        mov r1,0
+        add r1,2
+        ja +1
+        lsh r3, 0x8
+        call 1
+        ldxb r2, [r1+12]
+        ";
+        let parsed = parse(&src).unwrap();
+        eprint!("{:?}\n", parsed);
+        let insns = assemble_internal(&parsed).unwrap();
+        eprint!("{:?}", insns);
+    }
 }

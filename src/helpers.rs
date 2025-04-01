@@ -219,7 +219,16 @@ pub fn memfrob(ptr: u64, len: u64, unused3: u64, unused4: u64, unused5: u64) -> 
 pub fn sqrti(arg1: u64, unused2: u64, unused3: u64, unused4: u64, unused5: u64) -> u64 {
     (arg1 as f64).sqrt() as u64
 }
-
+#[allow(dead_code)]
+#[allow(unused_variables)]
+#[cfg(feature = "std")] // sqrt is only available when using `std`
+pub fn time_out(unused1: u64, unused2: u64, unused3: u64, unused4: u64, unused5: u64) -> u64 {
+    let mut a: u64 = 20;
+    for i in 1..1000000000 {
+        a = a + 1
+    }
+    a as u64
+}
 /// C-like `strcmp`, return 0 if the strings are equal, and a non-null value otherwise.
 ///
 /// # Examples
@@ -307,4 +316,31 @@ pub fn rand(min: u64, max: u64, unused3: u64, unused4: u64, unused5: u64) -> u64
         n = n % (max + 1 - min) + min;
     };
     n
+}
+#[cfg(test)]
+mod test {
+    use super::{bpf_time_getns, bpf_trace_printf, gather_bytes, memfrob};
+
+    #[test]
+    fn test_bpf_time_getns() {
+        let time = bpf_time_getns(0, 0, 0, 0, 0);
+        eprintln!("{}", time);
+    }
+    #[test]
+    fn test_bpf_trace_printf() {
+        let trace = bpf_trace_printf(0, 0, 0, 0, 0);
+        eprintln!("{}", trace);
+    }
+    #[test]
+    fn test_gather_bytes() {
+        let gather = gather_bytes(0x00, 0x00, 0x00, 0x00, 0x22);
+        eprint!("{}", gather);
+    }
+    #[test]
+    fn test_memfrob() {
+        let val: u64 = 0x112233;
+        let val_ptr = &val as *const u64;
+        memfrob(val_ptr as u64, 8, 0, 0, 0);
+        eprint!("{}", val);
+    }
 }
